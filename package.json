@@ -1,0 +1,23 @@
+{
+  "name": "crunchy-promise",
+  "version": "1.0.0",
+  "description": "A crunchy and delicious Promises/A+ spec implementation.",
+  "main": "crunchy.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/qdirks/crunchy-promise.git"
+  },
+  "keywords": [
+    "Promise",
+    "Promises/A+"
+  ],
+  "author": "Quinn Dirks",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/qdirks/crunchy-promise/issues"
+  },
+  "homepage": "https://github.com/qdirks/crunchy-promise#readme"
+}
