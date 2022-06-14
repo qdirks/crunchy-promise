@@ -108,7 +108,7 @@ var Crunchy = (function() {
     // static methods
     /** @returns {Crunchy} */
     Crunchy.resolve = function(value) {return new Crunchy(function(rs){rs(value);});};
-    function isit(it){return typeof it === 'object' && isFinite(it.length);}
+    function isit(it){return typeof it === 'object' && isFinite(it.length) && typeof it.length === 'number';}
     var nonIterable = "Parameter is not iterable";
     /** @param {Crunchy} p1 */
     function AllNotifier(p1) {
