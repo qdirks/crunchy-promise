@@ -193,7 +193,6 @@ var Crunchy = (function() {
         } return p2;
     };
     Crunchy.reject = function(rx) {return new Crunchy(function(_rs, rj){rj(rx);});};
-    
     Crunchy.any = function(iterable) {
         var rs, rj, p2 = new Crunchy(function(rs_, rj_){rs = rs_; rj = rj_;});
         if (!isit(iterable)) throw TypeError(nonIterable);
