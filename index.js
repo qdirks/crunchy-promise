@@ -3,7 +3,7 @@ var Crunchy = (function() {
     function isfn(fn){return typeof fn === 'function';}
     var async = (this.queueMicrotask || this.setTimeout).bind(this);
 
-    // promise definition
+    // promise constructor
     function Crunchy(resolver) {
         if (!isfn(resolver)) throw TypeError();
         this.state = 1; var p1; p1 = this;
