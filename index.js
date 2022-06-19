@@ -17,8 +17,7 @@ var Crunchy = (function() {
         var rs, rj;
         var p2 = new Crunchy(function(rs_, rj_){rs = rs_; rj = rj_;});
         queue.push({p1: this, fns: [oful, orej, rs, rj]});
-        if (this.state === 1) return p2;
-        executeQueue();
+        if (this.state !== 1) executeQueue();
         return p2;
     };
     /**
