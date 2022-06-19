@@ -107,7 +107,6 @@ var Crunchy = (function() {
     // static methods
     /** @returns {Crunchy} */
     Crunchy.resolve = function(value) {return new Crunchy(function(rs){rs(value);});};
-    function isit(it){return typeof it === 'object' && isFinite(it.length) && typeof it.length === 'number';}
     /** @param {Crunchy} p1 */
     function AllNotifier(p1) {
         if (p1.state === 3) return final(this.promise, p1.reason, 1);
@@ -122,6 +121,7 @@ var Crunchy = (function() {
             });
         }
     }
+    function isit(it){return typeof it === 'object' && isFinite(it.length) && typeof it.length === 'number';}
     var nonIterable = "Parameter is not iterable";
     Crunchy.all = function(iterable) {
         var rs, rj, values=[];
