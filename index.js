@@ -66,22 +66,18 @@ var Crunchy = (function() {
      * @param {number} offs 
      */
     function resolveDependents(p1, vx, offs) {
-        /** @param {Crunchy} p2 */
-        var fn = function(p2) {
+        p1.adopters.forEach( /** @param {Crunchy} p2 */ function(p2) {
             final(p2, vx, offs);
             resolveDependents(p2, vx, offs);
-        };
-        p1.adopters.forEach(fn);
+        });
         p1.notifiers.forEach(function(ob){ob.notify(p1);});
         p1.adopters.splice(0);
         p1.notifiers.splice(0);
     }
-    var queueIsRunning = false;
     var stid;
     function executeQueue() {
         clearTimeout(stid);
         stid = async(function() { var on, rs, rj, rx, vx, ob, suc;
-            queueIsRunning = true;
             for (var ix = 0; ix < queue.length; ix++) {
                 ob = queue[ix];
                 if (ob.p1.state === 1) continue;
@@ -96,7 +92,7 @@ var Crunchy = (function() {
                     rj(ex);
                 } else rx(vx);
                 queue.splice(ix--, 1);
-            } queueIsRunning = false;
+            }
         });
     }
 
@@ -114,9 +110,7 @@ var Crunchy = (function() {
         this.values[this.index] = p1.value;
         this.resolved.count++;
         if (this.resolved.count === this.expected) {
-            if (queueIsRunning) {
-                final(ob.promise, ob.values, 0);
-            } else async(function(){
+            async(function(){
                 final(ob.promise, ob.values, 0);
             });
         }
@@ -127,25 +121,26 @@ var Crunchy = (function() {
         var rs, rj, values=[];
         var p2 = new Crunchy(function(rs_, rj_){rs = rs_; rj = rj_;});
         if (!isit(iterable)) throw TypeError(nonIterable);
-        if (+iterable.length === 0) return Crunchy.resolve(iterable);
+        var length = +iterable.length;
+        if (length === 0) return Crunchy.resolve(iterable);
         var p1, resolved = {count: 0};
-        for (var ix = 0; ix < +iterable.length; ix++) { // jshint -W083
+        for (var ix = 0; ix < length; ix++) { // jshint -W083
             p1 = Crunchy.resolve(iterable[ix]);
             if (p1.state === 1) {
                 p1.notifiers.push({
                     promise: p2,
                     values: values,
                     index: ix,
-                    expected: +iterable.length,
+                    expected: length,
                     resolved: resolved,
                     notify: AllNotifier
                 });
             } else if (p1.state === 2) {
                 values[ix] = p1.value;
                 resolved.count++;
-                if (resolved.count === +iterable.length) async(function(){rs(values);});
+                if (resolved.count === length) async(function(){rs(values);});
             } else if (p1.state === 3) {
-                rj(p1.reason);
+                async(function(){rj(p1.reason);});
                 break;
             }
         } return p2;
@@ -154,72 +149,100 @@ var Crunchy = (function() {
     /** @param {Crunchy} p1 */
     function AllSettledNotifier(p1) {
         var ob = this;
-        this.values[this.index] = {status: sel2[p1.state - 2]};
+        this.values[this.index] = {status: sel2[p1.state - 2]}; // set the status
         var selector = sel1[p1.state - 2];
-        this.values[this.index][selector] = p1[selector];
+        this.values[this.index][selector] = p1[selector]; // set the value or reason
         this.resolved.count++;
         if (this.resolved.count === this.expected) {
-            if (queueIsRunning) {
-                final(ob.promise, ob.values, p1.state - 2);
-            } else async(function(){
+            async(function(){
                 final(ob.promise, ob.values, p1.state - 2);
             });
         }
     }
     function noop(){}
     Crunchy.allSettled = function(iterable) {
-        var values=[], p2 = new Crunchy(noop);
+        var rs, rj, values=[];
+        var p2 = new Crunchy(function(rs_, rj_){rs = rs_; rj = rj_;});
         if (!isit(iterable)) throw TypeError(nonIterable);
-        if (+iterable.length === 0) return Crunchy.resolve(iterable);
+        var length = +iterable.length;
+        if (length === 0) return Crunchy.resolve(iterable);
         var p1, resolved = {count: 0};
-        for (var ix = 0; ix < iterable.length; ix++) { // jshint -W083
+        for (var ix = 0; ix < length; ix++) { // jshint -W083
             p1 = Crunchy.resolve(iterable[ix]);
             if (p1.state === 1) {
                 p1.notifiers.push({
                     promise: p2,
                     values: values,
                     index: ix,
-                    expected: +iterable.length,
+                    expected: length,
                     resolved: resolved,
                     notify: AllSettledNotifier
                 });
                 continue;
             }
+            if (p1.state !== 2 && p1.state !== 3) throw Error();
             values[ix] = {status: sel2[p1.state - 2]};
             values[ix][sel1[p1.state - 2]] = p1[sel1[p1.state - 2]];
             resolved.count++;
-            if (resolved.count === +iterable.length) async(function() {final(p2, values, 0);});
+            if (resolved.count === length) async(function() {rs(values);});
         } return p2;
     };
     Crunchy.reject = function(rx) {return new Crunchy(function(_rs, rj){rj(rx);});};
+    var AggregateError = new Error("All promises were rejected");
+    /** @param {Crunchy} p1 */
+    function AnyNotifier(p1) {
+        if (this.promise.state !== 1) return;
+        if (p1.state === 3) {
+            this.resolved.count++;
+            if (this.resolved.count === this.expected) {
+                async(function() {final(ob.promise, AggregateError, 1);});
+            }
+        }
+        if (p1.state !== 2) throw Error();
+        var ob = this;
+        async(function(){final(ob.promise, p1.value, 0);});
+    }
     Crunchy.any = function(iterable) {
         var rs, rj, p2 = new Crunchy(function(rs_, rj_){rs = rs_; rj = rj_;});
         if (!isit(iterable)) throw TypeError(nonIterable);
-        var AggregateError = new Error("All promises were rejected");
-        if (+iterable.length === 0) return Crunchy.reject(AggregateError);
-        var rcnt = 0;
-        for (var ix = 0; ix < +iterable.length; ix++) { // jshint -W083
-            Crunchy.resolve(iterable[ix]).then(
-                function(vx){rs(vx); rs=noop; rj=noop;},
-                function(){if (++rcnt === +iterable.length) rj(AggregateError);}
-            );
+        var length = +iterable.length;
+        if (length === 0) return Crunchy.reject(AggregateError);
+        var resolved = {count: 0};
+        for (var ix = 0; ix < length; ix++) { // jshint -W083
+            var p1 = Crunchy.resolve(iterable[ix]);
+            if (p1.state === 1) {
+                p1.notifiers.push({
+                    promise: p2,
+                    resolved: resolved,
+                    expected: length,
+                    notify: AnyNotifier
+                });
+                continue;
+            }
+            if (p1.state === 3) {
+                resolved.count++;
+                if (resolved.count === length) {
+                    async(function(){rj(AggregateError);});
+                }
+                break;
+            }
+            if (p1.state !== 2) throw Error();
+            async(function() {rs(p1.value);});
         } return p2;
     };
     /** @param {Crunchy} p1 */
     function RaceNotifier(p1) {
         if (this.promise.state !== 1) return;
         var ob = this;
-        if (queueIsRunning) {
-            final(ob.promise, p1[sel1[p1.state - 2]], p1.state - 2);
-        } else async(function(){
+        async(function(){
             final(ob.promise, p1[sel1[p1.state - 2]], p1.state - 2);
         });
     }
     Crunchy.race = function(iterable) {
         var p2 = new Crunchy(noop);
         if (!isit(iterable)) throw TypeError(nonIterable);
-        var p1;
-        for (var ix = 0; ix < iterable.length; ix++) { // jshint -W083
+        var p1, length = +iterable.length;
+        for (var ix = 0; ix < length; ix++) { // jshint -W083
             p1 = Crunchy.resolve(iterable[ix]);
             if (p1.state === 1) {
                 p1.notifiers.push({
@@ -228,6 +251,7 @@ var Crunchy = (function() {
                 });
                 continue;
             }
+            if (p1.state !== 2 && p1.state !== 3) throw Error();
             async(function() {
                 final(p2, p1[sel1[p1.state - 2]], p1.state - 2);
             });
