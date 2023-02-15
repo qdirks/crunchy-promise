@@ -1,7 +1,7 @@
 var Crunchy = (function() {
     // utility functions
     function isfn(fn){return typeof fn === 'function';}
-    var async = (this.queueMicrotask || this.setTimeout).bind(this);
+    var async = (globalThis.queueMicrotask || globalThis.setTimeout).bind(globalThis);
 
     // promise constructor
     function Crunchy(resolver) {
@@ -13,7 +13,7 @@ var Crunchy = (function() {
         resolver(function(vx){resolve(p1, vx);}, function(rx){reject(rx);});
     }
     var queue = [];
-    Crunchy.prototype.then = function(oful, orej) {
+    Crunchy.prototype.then = function then(oful, orej) {
         var rs, rj;
         var p2 = new Crunchy(function(rs_, rj_){rs = rs_; rj = rj_;});
         queue.push({p1: this, fns: [oful, orej, rs, rj]});
@@ -96,13 +96,13 @@ var Crunchy = (function() {
         });
     }
 
-    Crunchy.prototype.catch = function(orej) {return this.then(void(0), orej);};
+    Crunchy.prototype.catch = function catch_(orej) {return this.then(void(0), orej);};
     function on(ofin){return function(vx){ofin(); return vx;};}
-    Crunchy.prototype.finally = function(ofin) {return this.then(on(ofin), on(ofin));};
+    Crunchy.prototype.finally = function finally_(ofin) {return this.then(on(ofin), on(ofin));};
 
     // static methods
     /** @returns {Crunchy} */
-    Crunchy.resolve = function(value) {return new Crunchy(function(rs){rs(value);});};
+    Crunchy.resolve = function resolve(value) {return new Crunchy(function(rs){rs(value);});};
     /** @param {Crunchy} p1 */
     function AllNotifier(p1) {
         if (p1.state === 3) return final(this.promise, p1.reason, 1);
@@ -117,7 +117,7 @@ var Crunchy = (function() {
     }
     function isit(it){return typeof it === 'object' && isFinite(it.length) && typeof it.length === 'number';}
     var nonIterable = "Parameter is not iterable";
-    Crunchy.all = function(iterable) {
+    Crunchy.all = function all(iterable) {
         var rs, rj, values=[];
         var p2 = new Crunchy(function(rs_, rj_){rs = rs_; rj = rj_;});
         if (!isit(iterable)) throw TypeError(nonIterable);
@@ -160,7 +160,7 @@ var Crunchy = (function() {
         }
     }
     function noop(){}
-    Crunchy.allSettled = function(iterable) {
+    Crunchy.allSettled = function allSettled(iterable) {
         var rs, rj, values=[];
         var p2 = new Crunchy(function(rs_, rj_){rs = rs_; rj = rj_;});
         if (!isit(iterable)) throw TypeError(nonIterable);
@@ -187,7 +187,7 @@ var Crunchy = (function() {
             if (resolved.count === length) async(function() {rs(values);});
         } return p2;
     };
-    Crunchy.reject = function(rx) {return new Crunchy(function(_rs, rj){rj(rx);});};
+    Crunchy.reject = function reject(rx) {return new Crunchy(function(_rs, rj){rj(rx);});};
     var AggregateError = new Error("All promises were rejected");
     /** @param {Crunchy} p1 */
     function AnyNotifier(p1) {
@@ -202,7 +202,7 @@ var Crunchy = (function() {
         var ob = this;
         async(function(){final(ob.promise, p1.value, 0);});
     }
-    Crunchy.any = function(iterable) {
+    Crunchy.any = function any(iterable) {
         var rs, rj, p2 = new Crunchy(function(rs_, rj_){rs = rs_; rj = rj_;});
         if (!isit(iterable)) throw TypeError(nonIterable);
         var length = +iterable.length;
@@ -238,7 +238,7 @@ var Crunchy = (function() {
             final(ob.promise, p1[sel1[p1.state - 2]], p1.state - 2);
         });
     }
-    Crunchy.race = function(iterable) {
+    Crunchy.race = function race(iterable) {
         var p2 = new Crunchy(noop);
         if (!isit(iterable)) throw TypeError(nonIterable);
         var p1, length = +iterable.length;
